@@ -1,0 +1,133 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pdb
+
+"旅行商问题 ( TSP , Traveling Salesman Problem )"
+coordinates = np.array([[116.46, 39.92], [117.2,39.13], [121.48, 31.22], [106.54, 29.59], [91.11, 29.97],
+                        [87.68, 43.77], [106.27, 38.47], [111.65, 40.82], [108.33, 22.84], [126.63, 45.75],
+                        [125.35, 43.88], [123.38, 41.8], [114.48, 38.03], [112.53, 37.87], [101.74, 36.56],
+                        [117,36.65], [113.6,34.76], [118.78, 32.04], [117.27, 31.86], [120.19, 30.26],
+                        [119.3, 26.08], [115.89, 28.68], [113, 28.21], [114.31, 30.52], [113.23, 23.16],
+                        [121.5, 25.0], [110.35, 20.02], [103.73, 36.03], [108.95, 34.27], [104.06, 30.67],
+                        [106.71, 26.57], [102.73, 25.04], [114.1, 22.2], [113.33, 22.13]])
+
+
+# 得到距离矩阵的函数
+def getdistmat(coordinates):
+    num = coordinates.shape[0]  # 52个坐标点
+    distmat = np.zeros((34, 34))  # 52X52距离矩阵
+    for i in range(num):
+        for j in range(i, num):
+            distmat[i][j] = distmat[j][i] = np.linalg.norm(coordinates[i] - coordinates[j])
+    return distmat
+
+
+def initpara():
+    alpha = 0.98
+    t = 5
+    markovlen = 50 # 每个温度跌打次数
+    return alpha, t, markovlen
+
+
+num = coordinates.shape[0]
+distmat = getdistmat(coordinates)  # 得到距离矩阵
+
+solutionnew = np.arange(num)
+# valuenew = np.max(num)
+
+solutioncurrent = solutionnew.copy()
+valuecurrent = 99000  # np.max这样的源代码可能同样是因为版本问题被当做函数不能正确使用，应取一个较大值作为初始值
+# print(valuecurrent)
+
+solutionbest = solutionnew.copy()
+valuebest = 99000  # np.max
+
+alpha, t, markovlen = initpara()
+
+
+result = []  # 记录迭代过程中的最优解
+current_list = []  # 记录迭代过程中的当前解
+best_list = [] # 记录迭代过程中的最优解
+while t > 1e-8:
+    for i in np.arange(markovlen):
+
+        # 下面的两交换和三角换是两种扰动方式，用于产生新解
+        if np.random.rand() > 0.5:  # 交换路径中的这2个节点的顺序
+            # np.random.rand()产生[0, 1)区间的均匀随机数
+            while True:  # 产生两个不同的随机数
+                loc1 = np.int(np.ceil(np.random.rand() * (num - 1)))
+                loc2 = np.int(np.ceil(np.random.rand() * (num - 1)))
+                ## print(loc1,loc2)
+                if loc1 != loc2:
+                    break
+            solutionnew[loc1], solutionnew[loc2] = solutionnew[loc2], solutionnew[loc1]
+        else:  # 三交换
+            while True:
+                loc1 = np.int(np.ceil(np.random.rand() * (num - 1)))
+                loc2 = np.int(np.ceil(np.random.rand() * (num - 1)))
+                loc3 = np.int(np.ceil(np.random.rand() * (num - 1)))
+
+                if ((loc1 != loc2) & (loc2 != loc3) & (loc1 != loc3)):
+                    break
+
+            # 下面的三个判断语句使得loc1<loc2<loc3
+            if loc1 > loc2:
+                loc1, loc2 = loc2, loc1
+            if loc2 > loc3:
+                loc2, loc3 = loc3, loc2
+            if loc1 > loc2:
+                loc1, loc2 = loc2, loc1
+
+            # 下面的三行代码将[loc1,loc2)区间的数据插入到loc3之后
+            tmplist = solutionnew[loc1:loc2].copy()
+            solutionnew[loc1:loc3 - loc2 + 1 + loc1] = solutionnew[loc2:loc3 + 1].copy()
+            solutionnew[loc3 - loc2 + 1 + loc1:loc3 + 1] = tmplist.copy()
+
+        valuenew = 0
+        for i in range(num - 1):
+            valuenew += distmat[solutionnew[i]][solutionnew[i + 1]]
+        valuenew += distmat[solutionnew[0]][solutionnew[-1]]
+        #print(solutioncurrent)
+
+        # print (valuenew)
+        if valuenew < valuecurrent:  # 接受该解
+            # 更新solutioncurrent 和solutionbest
+            valuecurrent = valuenew
+            solutioncurrent = solutionnew.copy()
+            current_list.append(valuenew)
+            if valuenew < valuebest:
+                valuebest = valuenew
+                solutionbest = solutionnew.copy()
+            best_list.append(valuebest)
+
+        else:  # 按一定的概率接受该解
+            if np.random.rand() < np.exp(-(valuenew - valuecurrent) / t):
+                #print(t)
+                valuecurrent = valuenew
+                solutioncurrent = solutionnew.copy()
+                current_list.append(valuenew)
+                best_list.append(valuebest)
+            else:
+                solutionnew = solutioncurrent.copy()
+
+    t = alpha * t
+    result.append(valuebest)
+    #print(t)  # 程序运行时间较长，打印t来监视程序进展速度
+k = 1
+number_list = []
+
+for i in current_list:
+    number_list.append(k)
+    k+=1
+
+
+# 用来显示结果
+
+plt.plot(number_list,current_list,label = "current")
+plt.plot(number_list,best_list,label = "best")
+plt.legend(loc = "upper right")
+
+plt.title("delta= "+str(alpha)+" ini_T:" + str(100))
+plt.xlabel('iteration')
+plt.ylabel('value')
+plt.show()
