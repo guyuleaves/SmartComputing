@@ -1,0 +1,54 @@
+import numpy
+import networkx as nx
+infile_road_node_path = 
+infile_road_edge_path = 
+infile_road_node = open(infile_road_node_path, 'r')
+infile_road_edge = open(infile_road_edge_path, 'r')
+
+G=nx.DiGraph()
+conut_road_node = 0  #道路节点数量
+
+for line in infile_road_edge:
+    line_list = line.strip().split(',')
+    G.add_edge(int(line_list[1]), int(line_list[2]), weight = float('%.2f' % float((line_list[-3]))))
+    G.add_edge(int(line_list[2]), int(line_list[1]), weight = float('%.2f' % float((line_list[-3]))))
+
+'''G.add_edge(0,1,weight=80)
+G.add_edge(1,2,weight=50)
+G.add_edge(1,3,weight=30)
+G.add_edge(3,2,weight=10)
+G.add_edge(2,4,weight=20)
+G.add_edge(2,5,weight=30)
+G.add_edge(4,5,weight=10)
+G.add_edge(5,3,weight=5)
+G.add_edge(2,6,weight=10)
+G.add_edge(4,6,weight=10)
+G.add_edge(3,6,weight=25)
+G.add_edge(5,6,weight=35)'''
+
+
+def Dijkstra(G,start,end):
+    RG = G.reverse(); dist = {}; previous = {}
+    for v in RG.nodes():
+        dist[v] = float('inf')
+        previous[v] = 'none'
+    dist[end] = 0
+    u = end
+    while u!=start:
+        u = min(dist, key=dist.get)
+        distu = dist[u]
+        del dist[u]
+        for u,v in RG.edges(u):
+            if v in dist:
+                alt = distu + RG[u][v]['weight']
+                if alt < dist[v]:
+                    dist[v] = alt
+                    previous[v] = u
+    path=(start,)
+    last= start
+    while last != end:
+        nxt = previous[last]
+        path += (nxt,)
+        last = nxt
+    return path
+
